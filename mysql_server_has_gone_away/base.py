@@ -5,7 +5,7 @@ https://stackoverflow.com/a/60894948/3872976
 import logging
 
 from django.db.backends.mysql import base
-from django.db.utils import OperationalError
+from django.db.utils import OperationalError, InterfaceError
 
 logger = logging.getLogger('mysql_server_has_gone_away')
 
@@ -14,7 +14,7 @@ def check_mysql_gone_away(db_wrapper):
         def wrapper(self, query, args=None):
             try:
                 return f(self, query, args)
-            except (base.Database.OperationalError, base.Database.InterfaceError, OperationalError) as e:
+            except (base.Database.OperationalError, base.Database.InterfaceError, OperationalError, InterfaceError) as e:
                 logger.warn("%s. Rerunning query: %s", str(e), query)
                 if 'MySQL server has gone away' in str(e) or 'Lost connection to MySQL server during query' in str(e):
                     db_wrapper.connection.close()
