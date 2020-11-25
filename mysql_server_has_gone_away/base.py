@@ -48,3 +48,18 @@ class DatabaseWrapper(base.DatabaseWrapper):
 
         cursor = self.connection.cursor()
         return CursorWrapper(cursor)
+
+    def _set_autocommit(self, autocommit):
+        try:
+            return super(DatabaseWrapper, self)._set_autocommit(autocommit)
+        except (base.Database.OperationalError, base.Database.InterfaceError, OperationalError, InterfaceError, err.OperationalError, err.InterfaceError) as e:
+            logger.warn("Rerunning _set_autocommit %s: %s", str(autocommit), str(e))
+            if 'MySQL server has gone away' in str(e) or 'Lost connection to MySQL server during query' in str(e):
+                self.connection.close()
+                self.connect()
+                return super(DatabaseWrapper, self)._set_autocommit(autocommit)
+            # Map some error codes to IntegrityError, since they seem to be
+            # misclassified and Django would prefer the more logical place.
+            if e.args[0] in self.codes_for_integrityerror:
+                raise base.utils.IntegrityError(*tuple(e.args))
+            raise
